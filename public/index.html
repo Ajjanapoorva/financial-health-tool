@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Financial Health Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f5f7fa;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+}
+
+.upload {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin-top: 20px;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    width: 15%;
+    min-width: 150px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin: 5px;
+}
+
+.section {
+    margin-top: 25px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.chart-container {
+    width: 60%;
+    margin: auto;
+}
+
+canvas {
+    max-height: 300px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Financial Health Assessment Tool</h1>
+
+<div class="upload">
+    <input type="file" id="file"/>
+    <button onclick="upload()">Upload</button>
+</div>
+
+<div class="cards" id="cards" style="display:none;">
+    <div class="card">
+        <h3>Revenue</h3>
+        <p id="revenue"></p>
+    </div>
+
+    <div class="card">
+        <h3>Expenses</h3>
+        <p id="expenses"></p>
+    </div>
+
+    <div class="card">
+        <h3>Profit</h3>
+        <p id="profit"></p>
+    </div>
+
+    <div class="card">
+        <h3>Margin %</h3>
+        <p id="margin"></p>
+    </div>
+
+    <div class="card">
+        <h3>Risk</h3>
+        <p id="risk"></p>
+    </div>
+
+    <div class="card">
+        <h3>Loan Status</h3>
+        <p id="loan"></p>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Business Health Score</h3>
+    <div class="chart-container">
+        <canvas id="healthChart"></canvas>
+    </div>
+</div>
+
+<div class="section" id="insightBox" style="display:none;">
+    <h3>AI Recommendation</h3>
+    <p id="insight"></p>
+</div>
+
+<div class="section">
+    <h3>Revenue vs Expenses</h3>
+    <div class="chart-container">
+        <canvas id="lineChart"></canvas>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Expense vs Profit Distribution</h3>
+    <div class="chart-container">
+        <canvas id="pieChart"></canvas>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Revenue Forecast</h3>
+    <div class="chart-container">
+        <canvas id="forecastChart"></canvas>
+    </div>
+</div>
+
+<script>
+let lineChart, pieChart, healthChart, forecastChart;
+
+function upload() {
+    const fileInput = document.getElementById("file");
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    fetch("/upload", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById("cards").style.display = "flex";
+        document.getElementById("insightBox").style.display = "block";
+
+        revenue.innerText = "₹ " + data.revenue.toLocaleString();
+        expenses.innerText = "₹ " + data.expenses.toLocaleString();
+        profit.innerText = "₹ " + data.profit.toLocaleString();
+        margin.innerText = data.profit_margin.toFixed(2) + "%";
+        risk.innerText = data.risk;
+        loan.innerText = data.loan_status;
+        insight.innerText = data.insight;
+
+        // Health Score
+        let score = Math.min(Math.max(data.profit_margin * 2, 0), 100);
+
+        if (healthChart) healthChart.destroy();
+
+        healthChart = new Chart(
+            document.getElementById("healthChart"),
+            {
+                type: "doughnut",
+                data: {
+                    labels: ["Score", "Remaining"],
+                    datasets: [{
+                        data: [score, 100 - score]
+                    }]
+                },
+                options: {
+                    rotation: -90,
+                    circumference: 180,
+                    plugins: { tooltip: { enabled: false } }
+                }
+            }
+        );
+
+        // Line Chart
+        if (lineChart) lineChart.destroy();
+
+        lineChart = new Chart(
+            document.getElementById("lineChart"),
+            {
+                type: "line",
+                data: {
+                    labels: ["Revenue", "Expenses", "Profit"],
+                    datasets: [{
+                        label: "Financial Metrics",
+                        data: [data.revenue, data.expenses, data.profit],
+                        fill: false,
+                        tension: 0.3
+                    }]
+                }
+            }
+        );
+
+        // Pie Chart
+        if (pieChart) pieChart.destroy();
+
+        pieChart = new Chart(
+            document.getElementById("pieChart"),
+            {
+                type: "pie",
+                data: {
+                    labels: ["Expenses", "Profit"],
+                    datasets: [{
+                        data: [data.expenses, data.profit]
+                    }]
+                }
+            }
+        );
+
+        // Forecast Chart
+        if (forecastChart) forecastChart.destroy();
+
+        forecastChart = new Chart(
+            document.getElementById("forecastChart"),
+            {
+                type: "bar",
+                data: {
+                    labels: ["Current Revenue", "Forecast Revenue"],
+                    datasets: [{
+                        label: "Revenue Forecast",
+                        data: [data.revenue, data.forecast]
+                    }]
+                }
+            }
+        );
+    });
+}
+</script>
+
+</body>
+</html>
